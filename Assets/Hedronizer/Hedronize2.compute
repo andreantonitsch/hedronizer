@@ -1,0 +1,429 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel hedronize
+
+
+
+//               2------C-------3
+//              /|             /|
+//             B |            D |
+//            /  G           /  H
+//           1---+---A------0   |
+// origin->  |   6------K---|---7     y    
+//           |  /           |  /      |   
+//           F J            E L       | 
+//           |/             |/        |
+//           5-------I------4         -----> x
+//                                   / 
+//                                  /
+//                                 z
+
+
+//  Plane cuts, from edge to edge, A->K, D->J, E->G
+// Main Diagonal 0->6 = M, all hedrons have the longest edge on M
+// Face Cuts / Edges = 02 = N, 05 = O, 07 = P, 46 = Q, 16 = R, 36 = S, 46 = T
+//  hedrons (vertices)
+// 0456, 5106  -> hedrons for face AEIF
+// 0376, 7406  -> hedrons for face DHLE
+// 0326, 2106  -> hedrons for face ABCD
+
+// per hedron
+// hedron vertex orientation 
+// longest edge = 04 ( l * 2^{1/3) )
+// second longest edges = 02, 13  ( l * 2^{1/2) )
+// shortest edges = 23, 01, 12  ( l )
+//
+//      0
+//     /|\
+//    / | \
+//   1--+--2
+//    \ | /
+//     \|/
+//      3  
+
+//    {0, 4, 5, 6}, // hedron 0
+//    {0, 1, 5, 6}, // hedron 1
+//    {0, 3, 7, 6}, // hedron 2
+//    {0, 7, 4, 6}, // hedron 3
+//    {0, 2, 3, 6}, // hedron 4
+//    {0, 1, 2, 6}  // hedron 5 
+
+
+/// PARAMETERS
+
+uniform float4 origin;
+uniform float4 cell_size;
+uniform float _Time;
+/// STRUCTS
+
+struct Vertex {
+    float4 position;
+    float4 normal;
+    float4 color;
+    //float4 v1;
+
+};
+
+
+struct Facet{
+    Vertex vertices[3];
+};
+
+struct VertexValues{
+    float3 vertices[8];
+    float v[8];
+};
+
+/// BUFFERS
+
+AppendStructuredBuffer<Facet> vertex_buffer;
+
+
+/// LOOK UP TABLES
+
+const static float4 colors[16] ={ 
+    float4(1.0, 1.00, 1.0, 0.0),    //0
+    float4(1.0, 1.0, 0.5, 0.0),   //1
+    float4(1.0, 0.5, 1.0, 0.0),   //2
+    float4(0.5, 1.0, 1.0, 0.0),  //3
+    float4(1.0, 0.5, 0.5, 0.0),    //4
+
+    float4(0.5, 1.0, 0.5, 0.0),      //5
+    float4(0.5, 0.5, 1.0, 0.0),         //6
+    float4(0.5, 0.5, 0.5, 0.0),     //7 
+    float4(0.0, 0.5, 0.5, 0.0),         //8
+    float4(0.5, 0.0, 0.5, 0.0),           //9
+    float4(0.5, 0.5, 0.0, 0.0),         //10
+    float4(1.0, 1.0, 0.0 , 0.0),         //11
+
+    float4(1.0, 0.0, 1.0, 0.0),             //12
+    float4(0.0, 1.0, 1.0, 0.0),           //13
+    float4(0.2, 0.2, 0.2, 0.0),    //14
+    float4(0.00, 0.0, 0.0, 0.0),            //15
+
+
+};
+
+// look up table for cube corners
+// cube vertex id -> cube vertex local position
+const static float3 cube_corners[8] = {
+    float3(1.0, 1.0, 1.0), //0
+    float3(0.0, 1.0, 1.0), //1
+    float3(0.0, 1.0, 0.0), //2
+    float3(1.0, 1.0, 0.0), //3
+    float3(1.0, 0.0, 1.0), //4
+    float3(0.0, 0.0, 1.0), //5
+    float3(0.0, 0.0, 0.0), //6
+    float3(1.0, 0.0, 0.0), //7
+};
+
+// hedron vertex orientation 
+// longest edge = 04 ( l * 2^{1/3) )
+// second longest edges = 02, 13  ( l * 2^{1/2) )
+// shortest edges = 23, 01, 12  ( l )
+//
+//      0
+//     /|\
+//    / | \
+//   1--+--2
+//    \ | /
+//     \|/
+//      3  
+
+//lookup table for hedron x vertices
+// hedron id -> [ hedron vertex id -> cube vertex id ]
+const static uint hedron_vertices[6][4] = {
+    {0, 5, 4, 6}, // hedron 0
+    {0, 1, 5, 6}, // hedron 1
+    {0, 7, 3, 6}, // hedron 2
+    {0, 4, 7, 6}, // hedron 3
+    {0, 3, 2, 6}, // hedron 4
+    {0, 2, 1, 6}  // hedron 5 
+};
+
+//               2------C-------3
+//              /|             /|
+//             B |            D |
+//            /  G           /  H
+//           1---+---A------0   |
+// origin->  |   6------K---|---7     y    
+//           |  /           |  /      |   
+//           F J            E L       | 
+//           |/             |/        |
+//           5-------I------4         -----> x
+//                                   / 
+//                                  /
+//                                 z
+static uint cube_faces[6][4] = {
+    {0, 1, 2, 3},
+    {0, 1, 5, 4},
+    {0, 4, 7, 3},
+    {1, 2, 6, 5},
+    {4, 5, 6, 7},
+    {2, 3, 7, 6}
+};
+
+
+//lookup table for case to hedron edges that make up the triangles
+//at most 2 triangles
+const static int case_edges[16][12] = 
+{
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, //case 0000 or 1111 = 0 or 15 (no vertices are flagged (hedron inside or outside boundary))
+    {0, 1, 0, 3, 0, 2, -1, -1, -1, -1, -1, -1},       //case 0001 or 1110 = 1 or 14 (vertex 0, top large diagonal flagged)
+    {0, 1, 1, 2, 1, 3, -1, -1, -1, -1, -1, -1},       //case 0010 or 1101 = 2 or 13 (vertex 1, 1st 90d corner is flagged)
+    {0, 3, 0, 2, 1, 3, 0, 2, 1, 2, 1, 3},             //case 0011 or 1100 = 3 or 12 vertices 0 and 1 flagged)
+    {0, 2, 2, 3, 1, 2, -1, -1, -1, -1, -1, -1},       //case 0100 or 1011 = 4 or 11 (vertex 2, 2nd 90d corner is flagged)
+    {1, 2, 0, 1, 0, 3,      0, 3, 2, 3, 1, 2},             //case 0101 or 1010 = 5 or 10 vertices 0 and 2 flagged)
+    {0, 1, 0, 2, 2, 3, 0, 1, 2, 3, 1, 3},             //case 0110 or 1001 = 6 or 9 (vertices 1 and 2, short diagonal flagged)
+    {1, 3,0, 3, 2, 3, -1, -1, -1, -1, -1, -1},       //case 1000 or 0111 = 8 or 7  (vertex 3, bottom large diagonal is flagged)
+    
+    {3, 0, 3, 1, 3, 2,-1, -1, -1, -1, -1, -1},        //case 1000 or 0111 = 8 or 7  (vertex 3, bottom large diagonal is flagged)
+    {1, 0, 3, 2, 2, 0, 1, 0, 3, 1, 3, 2},             //case 0110 or 1001 = 6 or 9 (vertices 1 and 2, short diagonal flagged)
+    {3, 0, 1, 0, 2, 1,      3, 2, 3, 0, 2, 1},            //case 0101 or 1010 = 5 or 10 vertices 0 and 2 flagged)   
+    {2, 0, 2, 1, 3, 2, -1, -1, -1, -1, -1, -1},       //case 0100 or 1011 = 4 or 11 (vertex 2, 2nd 90d corner is flagged)
+    {3, 0, 3, 1, 2, 0, 2, 0, 3, 1, 2, 1},             //case 0011 or 1100 = 3 or 12 vertices 0 and 1 flagged)          
+    {1, 0, 3, 1, 2, 1, -1, -1, -1, -1, -1, -1},       //case 0010 or 1101 = 2 or 13 (vertex 1, 1st 90d corner is flagged)
+    {1, 0, 2, 0, 3, 0, -1, -1, -1, -1, -1, -1},       //case 0001 or 1110 = 1 or 14 (vertex 0, top large diagonal flagged)
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1} //case 0000 or 1111 = 0 or 15 (no vertices are flagged (hedron inside or outside boundary))
+};
+
+
+
+/// FUNCTIONS
+
+uint getCase(uint hedron, VertexValues values) 
+{
+    uint hedron_case = 0;
+    // marks bit for each vertex that is negative
+    hedron_case |= values.v[hedron_vertices[hedron][0]] <0.0 ? 1    : 0; // flags vertex 0 (main diagonal top)
+    hedron_case |= values.v[hedron_vertices[hedron][1]] <0.0 ? 2    : 0; // flags vertex 1 (1st 90 degree corner)
+    hedron_case |= values.v[hedron_vertices[hedron][2]] <0.0 ? 4    : 0; // flags vertex 2 (2nd 90 degree corner)
+    hedron_case |= values.v[hedron_vertices[hedron][3]] <0.0 ? 8    : 0; // flags vertex 3 (main diagonal bottom)
+
+    //jank
+    // gets the smallest mirrored case.
+    // case, or the flipped bits with the upper bits cleared
+    return hedron_case;
+    //return min(hedron_case, ~hedron_case & 15u);
+    //return min(hedron_case, 15u - hedron_case);
+}
+
+// float3 opTwist(float3 p, float intensity)
+// {
+//     float k = intensity; // or some other amount
+//     float c = cos(k*p.z);
+//     float s = sin(k*p.z);
+//     float2x2  m = {c,-s,s,c};
+//     float3  q = float3(mul(m, p.xy),p.z);
+//     return q;
+// }
+
+float opSmoothUnion( float d1, float d2, float k )
+{
+    float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return lerp( d2, d1, h ) - k*h*(1.0-h);
+}
+
+float sdTorus( float3 p, float2 t )
+{
+  float2 q = float2(length(p.xy)-t.x,p.z);
+  return length(q)-t.y;
+}
+
+float sample_sdf(float3 position){
+    
+    float3 p = position + origin.xyz ;
+    float t = sdTorus(p - float3(4.0, 4.0, 4.0), float2 (0.9, 0.3));
+    float s =  length(p -  float3(4.0 + sin(_Time), 5.0, 4.0)) - 0.5; 
+    return opSmoothUnion(t, s, 0.3 + sin(_Time  * 0.2));
+}
+
+// float sample_sdf(float3 position){
+
+//     float3 p = position + origin.xyz - float3(4.0, 4.0, 4.0);
+//     p = opTwist(p, sin(_Time) * 20.0);
+//     float s = sdTorus(p, float2 (1.0, 0.3));
+//     // sphere at origin with radius 10
+//     return  s;
+// }
+
+// float sample_sdf(float3 position){
+
+//     float d1 =  length(position + origin.xyz -  float3(4.0, 4.0, 4.0)) - 1.5; 
+//     float d2 =  length(position + origin.xyz -  float3(4.0 + sin(_Time), 5.0, 4.0)) - 1.5; // * abs(sin(_Time)) -0.5; 
+//     float d3 =  length(position + origin.xyz -  float3(4.0, 6.25, 4.0)) - 0.5; 
+//     // sphere at origin with radius 10
+//     return   min(d1, min(d3,d2));
+// }
+
+float3 sample_sdf_gradient(float3 position){
+
+    float h = 0.0001;
+
+    float f = sample_sdf(position);
+    float3 deltas = float3(sample_sdf(position + float3(h, 0.0, 0.0)) - f,
+                           sample_sdf(position + float3(0.0, h, 0.0)) - f,
+                           sample_sdf(position + float3(0.0, 0.0, h)) - f
+     );
+
+    return normalize(deltas / h);
+
+}
+
+VertexValues getVertexValues(uint3 cube){
+
+    float3 vertices[8];
+    float v[8];
+
+    [unroll(8)]
+    for(int i = 0; i< 8; i++){
+        vertices[i] = ((cube_corners[i] + float3(cube)) * cell_size.xyz) + origin.xyz;
+        v[i] = sample_sdf(vertices[i]);
+    }
+    VertexValues values = {vertices, v};
+
+    return values;  
+}
+
+float invLerp(float a, float b, float x){
+
+    return saturate((x - a) / (b-a)) ;
+}
+
+//   p1----------------px-------p2
+//   0.3               0.0       -0.05
+float3 interpEdge(uint edge_vertex_1, uint edge_vertex_2, VertexValues values)
+{
+    float3 mid = lerp(values.vertices[edge_vertex_1], values.vertices[edge_vertex_2], invLerp(values.v[edge_vertex_1], values.v[edge_vertex_2], 0.0)); 
+    return mid;
+}
+
+bool createFacet(float3 v1, float3 v2, float3 v3, inout Facet facet, float4 color)
+{
+    Vertex vertices[3];
+    vertices[0].position = float4(v1,1.0);   //interpolates cube index vertices
+    vertices[0].normal = float4(0.0, 0.0, 0.0, 0.0);
+    vertices[0].color = color;
+
+    vertices[1].position = float4(v2,1.0);   //interpolates cube index vertices
+    vertices[1].normal = float4(0.0, 0.0, 0.0, 0.0);
+    vertices[1].color = color;
+
+    vertices[2].position = float4(v3,1.0);   //interpolates cube index vertices
+    vertices[2].normal = float4(0.0, 0.0, 0.0, 0.0);
+    vertices[2].color = color;
+
+    facet.vertices = vertices;
+
+    // facet.vertices[0].normal.xyz = cross(normalize(facet.vertices[0].position - facet.vertices[1].position), normalize(facet.vertices[0].position - facet.vertices[2].position));
+    // facet.vertices[1].normal.xyz = cross(normalize(facet.vertices[1].position - facet.vertices[2].position), normalize(facet.vertices[1].position - facet.vertices[0].position));
+    // facet.vertices[2].normal.xyz = cross(normalize(facet.vertices[2].position - facet.vertices[0].position), normalize(facet.vertices[2].position - facet.vertices[1].position));
+    
+    facet.vertices[0].normal.xyz = sample_sdf_gradient(facet.vertices[0].position);
+    facet.vertices[1].normal.xyz = sample_sdf_gradient(facet.vertices[1].position);
+    facet.vertices[2].normal.xyz = sample_sdf_gradient(facet.vertices[2].position);
+
+    return true;
+}
+
+//each hedron creates at most 2 valid facets
+bool createHedronFacet(uint hedron, uint case_id, uint first_edge, VertexValues values, inout Facet facet)
+{
+    // if this facet isnt part of the solution.
+    if(case_edges[case_id][first_edge] == -1) return false;
+
+    float3 vertices[3];
+
+    [unroll(3)]
+    for(uint i = 0; i < 3; i++){
+        Vertex v;
+        int edge1 =  case_edges[case_id][first_edge + 2 * i];               //gets hedron indexed edge
+        int edge2 =  case_edges[case_id][first_edge + 2 * i + 1];           // gets hedron indexed edge
+        int v_edge_1 = hedron_vertices[hedron][edge1];                      //converts hedron index edge to cube indexed vertices
+        uint v_edge_2 = hedron_vertices[hedron][edge2];                     //converts hedron index edge to cube indexed vertices
+        vertices[i] = interpEdge(v_edge_1, v_edge_2, values);
+    }
+
+    return createFacet(vertices[0], vertices[1], vertices[2], facet, colors[case_id]);
+}
+
+bool createCubeFacet(uint face,uint v1, uint v2, uint v3, VertexValues values, inout Facet facet)
+{
+    return createFacet(values.vertices[cube_faces[face][v1]], values.vertices[cube_faces[face][v2]], values.vertices[cube_faces[face][v3]], facet, colors[face]);
+}
+
+
+
+void appendHedronFacets(uint hedron, VertexValues values)
+{
+    uint hedronCase = getCase(hedron, values);
+
+    Facet facet1;
+    Facet facet2;
+    bool valid_facet = createHedronFacet(hedron, hedronCase, 0, values, facet1);
+    
+    if(valid_facet) {
+
+        vertex_buffer.Append(facet1);
+        valid_facet = createHedronFacet(hedron, hedronCase, 6, values, facet2);
+        if(valid_facet){
+            vertex_buffer.Append(facet2);
+        }
+    }
+
+}
+
+
+
+void appendCubeFace(uint face, VertexValues values)
+{
+    Facet facet1;
+    Facet facet2;
+    createCubeFacet(face, 0, 2, 1, values, facet1);
+    createCubeFacet(face, 0, 3, 2, values, facet2);
+
+    vertex_buffer.Append(facet1);
+    vertex_buffer.Append(facet2);
+}
+
+
+void appendCube(uint3 cube_id)
+{
+    VertexValues values = getVertexValues(cube_id);
+
+    uint cube_touch_surface = 0;
+
+    [unroll(8)]
+    for(uint i = 0; i < 8; i++){
+        cube_touch_surface |= values.v[i] < 0.0 ? 1 << i : 0;
+    }
+
+    if(cube_touch_surface == 0 || cube_touch_surface == 255) return;
+
+    //appends facets for each hedron
+    [unroll(6)]
+    for(uint i = 0; i < 6; i++){
+        appendCubeFace(i,values);
+    }
+}
+
+
+void processCube(uint3 cube_id)
+{
+    VertexValues values = getVertexValues(cube_id);
+
+    //appends facets for each hedron
+    [unroll(6)]
+    for(uint i = 0; i < 6; i++){
+        appendHedronFacets(i, values);
+    }
+}
+
+
+/// KERNELS
+
+[numthreads(8,8,8)]
+void hedronize (uint3 id : SV_DispatchThreadID)
+{
+    processCube(id);
+    //appendCube(id);
+}
