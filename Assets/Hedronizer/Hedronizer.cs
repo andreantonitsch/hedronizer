@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using UnityEngine.Rendering;
 public class Hedronizer : MonoBehaviour
 {
+    public Texture3DBuilder volumeBuilder;
     public MeshFilter obj;
     public Mesh mesh;
     public Material material;
@@ -21,14 +22,15 @@ public class Hedronizer : MonoBehaviour
     public float4 origin;
     public float4 size;
 
+    [Range(0,1)]
+    public float isovalue = 0.3f;
+
+    [Range(0,1)]
+    public float gradientH = 0.001f;
+
     public int bufferSize;
 
-    public Vector4[] data_array;
-    public Vector3[] vertex_array;
-    public Vector3[] normal_array;
-    public Color[] color_array;
-    public int[] tris;
-
+    public bool ready = false;
 
     // Start is called before the first frame update
     void Start()
@@ -56,9 +58,13 @@ public class Hedronizer : MonoBehaviour
         //Debug.Log(cell_size);
         int kernel_id = shader.FindKernel("hedronize");
         shader.SetBuffer(kernel_id, "vertex_buffer", computeBuffer);
-        shader.SetVector("origin", origin);
-        shader.SetVector("cell_size", cell_size);
+        shader.SetVector("_Origin", origin);
+        shader.SetVector("_CellSize", cell_size);
         shader.SetFloat("_Time", Time.time);
+        shader.SetFloat("_Isovalue", isovalue);
+        shader.SetFloat("_GradientH", gradientH);
+        shader.SetVector("_Size", size);
+        shader.SetTexture(kernel_id, "_SDF", volumeBuilder.volume);
 
         //var graphicsFence = Graphics.CreateGraphicsFence(GraphicsFenceType.CPUSynchronisation, SynchronisationStageFlags.ComputeProcessing);
 
@@ -67,7 +73,7 @@ public class Hedronizer : MonoBehaviour
         //while(!graphicsFence){}
 
         //Graphics.CopyBuffer(computeBuffer, vertexBuffer);
-        
+
         // mesh = new Mesh();
         // obj.mesh = mesh;
 
@@ -83,11 +89,11 @@ public class Hedronizer : MonoBehaviour
         // for (int i = 0; i < data_array.Length; i+=9)
         // {
         //     int tri_index = i/3;
-            
+
         //     tris[tri_index] = tri_index;
         //     tris[tri_index + 1] = tri_index + 1;
         //     tris[tri_index + 2] = tri_index + 2;
-            
+
         //     //consumes 1 triangle, 6 float4, 
         //     vertex_array[tri_index ] =  data_array[i];
         //     normal_array[tri_index ] =  data_array[i + 1];
@@ -116,8 +122,12 @@ public class Hedronizer : MonoBehaviour
 
     void Update()
     {
-        Run();
-        Draw();
+        if(ready)
+        {
+            Run();
+            Draw();
+        }
+
     }
 
 
@@ -134,6 +144,13 @@ public class Hedronizer : MonoBehaviour
         rp.matProps.SetBuffer("_Data", computeBuffer);
         rp.matProps.SetMatrix("_ObjectToWorld", transform.localToWorldMatrix);
         Graphics.RenderPrimitives(rp, MeshTopology.Triangles, bufferSize * 3, 1);
+    }
+
+    public void SetupTexture(){
+        //volumeBuilder.Initialize();
+        //volumeBuilder.GenerateProcedural();
+        if(volumeBuilder.volume.IsCreated())
+            ready = true;
     }
 
     void writeCommandBuffer(){

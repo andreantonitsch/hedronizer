@@ -176,7 +176,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: update
+  m_text: set texture
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -333,6 +333,7 @@ GameObject:
   m_Component:
   - component: {fileID: 209950551}
   - component: {fileID: 209950550}
+  - component: {fileID: 209950552}
   m_Layer: 0
   m_Name: hedronizer
   m_TagString: Untagged
@@ -352,13 +353,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7acefbdf087bf8d42ab0440315b5bb67, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  volumeBuilder: {fileID: 209950552}
   obj: {fileID: 1462671673}
   mesh: {fileID: 0}
-  material: {fileID: -876546973899608171, guid: 6ca8da1fa5d6d9140887c589e88bd2d4,
-    type: 3}
+  material: {fileID: 2100000, guid: f97a40d594c6aa346be2c80e86325c48, type: 2}
   shader: {fileID: 7200000, guid: 9cb4eb30f442f844f8a5ddd4a24a592e, type: 3}
   thread_groups: 8
-  cells_per_axis: 64
+  cells_per_axis: 8
   cell_size:
     x: 0
     y: 0
@@ -370,16 +371,14 @@ MonoBehaviour:
     z: 0
     w: 0
   size:
-    x: 8
-    y: 8
-    z: 8
+    x: 50
+    y: 50
+    z: 50
     w: 0
-  bufferSize: 24000
-  data_array: []
-  vertex_array: []
-  normal_array: []
-  color_array: []
-  tris: 
+  isovalue: 1
+  gradientH: 0.01
+  bufferSize: 128000
+  ready: 0
 --- !u!4 &209950551
 Transform:
   m_ObjectHideFlags: 0
@@ -395,6 +394,25 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &209950552
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 209950549}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5a1069041d00d8438b74862b28c6951, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  volume: {fileID: 0}
+  material: {fileID: -876546973899608171, guid: 9ea98019d5e566a44abbc9e4d23a43cb,
+    type: 3}
+  pass: 0
+  resolution: {x: 256, y: 256, z: 128}
+  format: 14
+  fileName: 
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -481,8 +499,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.13533244, y: -0.42203927, z: 0.06409998, w: -0.89412487}
-  m_LocalPosition: {x: 1.9665107, y: 5.987326, z: -0.1511058}
+  m_LocalRotation: {x: -0.10501205, y: 0.8938882, z: -0.3306692, w: -0.28389156}
+  m_LocalPosition: {x: 40.842545, y: 29.018381, z: 51.118046}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1137,7 +1155,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 209950550}
         m_TargetAssemblyTypeName: Hedronizer, Assembly-CSharp
-        m_MethodName: Run
+        m_MethodName: SetupTexture
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
