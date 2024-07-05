@@ -4,7 +4,7 @@
 struct Vertex {
     float4 position;
     float4 normal;
-    float4 color;
+    //float4 color;
     //float4 v1;
 
 };
@@ -31,8 +31,8 @@ void GetFacetNormalFlat_float(float vertexID, out float3 normal){
     normal.xyz /= 3.0;
 }
 
-void GetFacetColor_float(float vertexID, out float3 color){
-    color = _Data[int(vertexID) / 3].vertices[int(vertexID) % 3].color;
-}
+// void GetFacetColor_float(float vertexID, out float3 color){
+//     color = _Data[int(vertexID) / 3].vertices[int(vertexID) % 3].color;
+// }
 
 #endif

@@ -334,6 +334,8 @@ GameObject:
   - component: {fileID: 209950551}
   - component: {fileID: 209950550}
   - component: {fileID: 209950552}
+  - component: {fileID: 209950553}
+  - component: {fileID: 209950554}
   m_Layer: 0
   m_Name: hedronizer
   m_TagString: Untagged
@@ -354,31 +356,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   volumeBuilder: {fileID: 209950552}
-  obj: {fileID: 1462671673}
-  mesh: {fileID: 0}
-  material: {fileID: 2100000, guid: f97a40d594c6aa346be2c80e86325c48, type: 2}
   shader: {fileID: 7200000, guid: 9cb4eb30f442f844f8a5ddd4a24a592e, type: 3}
-  thread_groups: 8
   cells_per_axis: 8
-  cell_size:
-    x: 0
-    y: 0
-    z: 0
-    w: 0
-  origin:
-    x: 0
-    y: 0
-    z: 0
-    w: 0
   size:
-    x: 50
-    y: 50
-    z: 50
+    x: 64
+    y: 64
+    z: 64
     w: 0
-  isovalue: 1
-  gradientH: 0.01
+  sample_region:
+    x: 64
+    y: 64
+    z: 64
+  isovalue: 50
+  gradientH: 0.1
   bufferSize: 128000
+  max_triangles: 0
   ready: 0
+  IsChild: 0
 --- !u!4 &209950551
 Transform:
   m_ObjectHideFlags: 0
@@ -410,9 +404,44 @@ MonoBehaviour:
   material: {fileID: -876546973899608171, guid: 9ea98019d5e566a44abbc9e4d23a43cb,
     type: 3}
   pass: 0
-  resolution: {x: 256, y: 256, z: 128}
+  resolution: {x: 256, y: 256, z: 256}
   format: 14
   fileName: 
+--- !u!114 &209950553
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 209950549}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d12217c1e0091b7428dad7538966c693, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hedronizer: {fileID: 0}
+  material: {fileID: -876546973899608171, guid: 6ca8da1fa5d6d9140887c589e88bd2d4,
+    type: 3}
+--- !u!114 &209950554
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 209950549}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d83c3e1d3c5611a4bb3abbb74780d87f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ChunkPrefab: {fileID: 4413123225190186353, guid: fdddcd6f2b43d5649a6074245832ffdc,
+    type: 3}
+  Chunks: []
+  volumeBuilder: {fileID: 0}
+  ChunksPerAxis:
+    x: 4
+    y: 1
+    z: 4
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -786,13 +815,14 @@ GameObject:
   - component: {fileID: 763781653}
   - component: {fileID: 763781652}
   - component: {fileID: 763781651}
+  - component: {fileID: 763781656}
   m_Layer: 0
   m_Name: Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!135 &763781651
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -875,12 +905,39 @@ Transform:
   m_GameObject: {fileID: 763781650}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 10.75, y: 4, z: 4}
-  m_LocalScale: {x: 3, y: 3, z: 3}
+  m_LocalPosition: {x: 30, y: 15, z: 30}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!54 &763781656
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 763781650}
+  serializedVersion: 4
+  m_Mass: 1
+  m_Drag: 0
+  m_AngularDrag: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 2
+  m_Constraints: 0
+  m_CollisionDetection: 3
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -1054,7 +1111,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1462671670}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!4 &1462671674
 Transform:
   m_ObjectHideFlags: 0
@@ -1153,9 +1210,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 209950550}
-        m_TargetAssemblyTypeName: Hedronizer, Assembly-CSharp
-        m_MethodName: SetupTexture
+      - m_Target: {fileID: 209950554}
+        m_TargetAssemblyTypeName: HedronChunkCollisionManager, Assembly-CSharp
+        m_MethodName: Initialize
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

@@ -1,7 +1,9 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel hedronize
+#pragma kernel collisionizer
 
 #include "./SDFInclude/texture_threedee_sdf.hlsl"
+#include "./SDFInclude/sdf_gradient.hlsl"
 #include "./SDFInclude/hedronizer_variables.hlsl"
 
 //               2------C-------3
@@ -56,14 +58,21 @@
 struct Vertex {
     float4 position;
     float4 normal;
-    float4 color;
+    //float4 color;
     //float4 v1;
 
 };
 
-
 struct Facet{
     Vertex vertices[3];
+};
+
+struct ShallowVertex {
+    float4 position;
+};
+
+struct ShallowFacet {
+    ShallowVertex vertices[3];
 };
 
 struct VertexValues{
@@ -74,6 +83,7 @@ struct VertexValues{
 /// BUFFERS
 
 AppendStructuredBuffer<Facet> vertex_buffer;
+AppendStructuredBuffer<ShallowFacet> collider_buffer;
 
 
 /// LOOK UP TABLES
@@ -188,21 +198,6 @@ const static int case_edges[16][12] =
 
 /// FUNCTIONS
 
-
-float3 sample_sdf_gradient(float3 position){
-
-    float h = _GradientH;
-
-    float f = sample_sdf(position);
-    float3 deltas = float3(sample_sdf(position + float3(h, 0.0, 0.0)) - f,
-                           sample_sdf(position + float3(0.0, h, 0.0)) - f,
-                           sample_sdf(position + float3(0.0, 0.0, h)) - f
-     );
-
-    return normalize(deltas / h);
-
-}
-
 uint getCase(uint hedron, VertexValues values) 
 {
     uint hedron_case = 0;
@@ -225,7 +220,6 @@ VertexValues getVertexValues(uint3 cube){
 
     float3 vertices[8];
     float v[8];
-
     [unroll(8)]
     for(int i = 0; i< 8; i++){
         vertices[i] = ((cube_corners[i] + float3(cube)) * _CellSize.xyz) + _Origin.xyz;
@@ -249,20 +243,20 @@ float3 interpEdge(uint edge_vertex_1, uint edge_vertex_2, VertexValues values)
     return mid;
 }
 
-bool createFacet(float3 v1, float3 v2, float3 v3, inout Facet facet, float4 color)
+bool createFacet(float3 v1, float3 v2, float3 v3, inout Facet facet)
 {
     Vertex vertices[3];
     vertices[0].position = float4(v1,1.0);   //interpolates cube index vertices
     vertices[0].normal = float4(0.0, 0.0, 0.0, 0.0);
-    vertices[0].color = color;
+    //vertices[0].color = color;
 
     vertices[1].position = float4(v2,1.0);   //interpolates cube index vertices
     vertices[1].normal = float4(0.0, 0.0, 0.0, 0.0);
-    vertices[1].color = color;
+    //vertices[1].color = color;
 
     vertices[2].position = float4(v3,1.0);   //interpolates cube index vertices
     vertices[2].normal = float4(0.0, 0.0, 0.0, 0.0);
-    vertices[2].color = color;
+    //vertices[2].color = color;
 
     facet.vertices = vertices;
 
@@ -274,6 +268,16 @@ bool createFacet(float3 v1, float3 v2, float3 v3, inout Facet facet, float4 colo
     facet.vertices[1].normal.xyz = sample_sdf_gradient(facet.vertices[1].position);
     facet.vertices[2].normal.xyz = sample_sdf_gradient(facet.vertices[2].position);
 
+    return true;
+}
+
+bool createShallowFacet(float3 v1, float3 v2, float3 v3, inout ShallowFacet facet)
+{
+    ShallowVertex vertices[3];
+    vertices[0].position = float4(v1,1.0);   //interpolates cube index vertices
+    vertices[1].position = float4(v2,1.0);   //interpolates cube index vertices
+    vertices[2].position = float4(v3,1.0);   //interpolates cube index vertices
+    facet.vertices = vertices;
     return true;
 }
 
@@ -295,14 +299,53 @@ bool createHedronFacet(uint hedron, uint case_id, uint first_edge, VertexValues 
         vertices[i] = interpEdge(v_edge_1, v_edge_2, values);
     }
 
-    return createFacet(vertices[0], vertices[1], vertices[2], facet, colors[case_id]);
+    return createFacet(vertices[0], vertices[1], vertices[2], facet);
+}
+
+bool createShallowHedronFacet(uint hedron, uint case_id, uint first_edge, VertexValues values, inout ShallowFacet facet)
+{
+    // if this facet isnt part of the solution.
+    if(case_edges[case_id][first_edge] == -1) return false;
+
+    float3 vertices[3];
+
+    [unroll(3)]
+    for(uint i = 0; i < 3; i++){
+        Vertex v;
+        int edge1 =  case_edges[case_id][first_edge + 2 * i];               //gets hedron indexed edge
+        int edge2 =  case_edges[case_id][first_edge + 2 * i + 1];           // gets hedron indexed edge
+        int v_edge_1 = hedron_vertices[hedron][edge1];                      //converts hedron index edge to cube indexed vertices
+        uint v_edge_2 = hedron_vertices[hedron][edge2];                     //converts hedron index edge to cube indexed vertices
+        vertices[i] = interpEdge(v_edge_1, v_edge_2, values);
+    }
+
+    return createShallowFacet(vertices[0], vertices[1], vertices[2], facet);
 }
 
 bool createCubeFacet(uint face,uint v1, uint v2, uint v3, VertexValues values, inout Facet facet)
 {
-    return createFacet(values.vertices[cube_faces[face][v1]], values.vertices[cube_faces[face][v2]], values.vertices[cube_faces[face][v3]], facet, colors[face]);
+    return createFacet(values.vertices[cube_faces[face][v1]], values.vertices[cube_faces[face][v2]], values.vertices[cube_faces[face][v3]], facet);
 }
 
+
+void appendShallowHedronFacets(uint hedron, VertexValues values)
+{
+    uint hedronCase = getCase(hedron, values);
+
+    ShallowFacet facet1;
+    ShallowFacet facet2;
+    bool valid_facet = createShallowHedronFacet(hedron, hedronCase, 0, values, facet1);
+    
+    if(valid_facet) {
+
+        collider_buffer.Append(facet1);
+        valid_facet = createShallowHedronFacet(hedron, hedronCase, 6, values, facet2);
+        if(valid_facet){
+            collider_buffer.Append(facet2);
+        }
+    }
+
+}
 
 
 void appendHedronFacets(uint hedron, VertexValues values)
@@ -358,8 +401,18 @@ void appendCube(uint3 cube_id)
     }
 }
 
+void makeCollisionCube(uint3 cube_id)
+{
+    VertexValues values = getVertexValues(cube_id);
 
-void processCube(uint3 cube_id)
+    //appends facets for each hedron
+    [unroll(6)]
+    for(uint i = 0; i < 6; i++){
+        appendShallowHedronFacets(i, values);
+    }
+}
+
+void makeVisualizationCube(uint3 cube_id)
 {
     VertexValues values = getVertexValues(cube_id);
 
@@ -376,6 +429,12 @@ void processCube(uint3 cube_id)
 [numthreads(8,8,8)]
 void hedronize (uint3 id : SV_DispatchThreadID)
 {
-    processCube(id);
-    //appendCube(id);
+    makeVisualizationCube(id);
+}
+
+
+[numthreads(4,4,4)]
+void collisionizer (uint3 id : SV_DispatchThreadID)
+{
+    makeCollisionCube(id);
 }

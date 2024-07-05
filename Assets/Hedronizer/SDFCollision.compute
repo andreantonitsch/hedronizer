@@ -1,0 +1,63 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel collisionize
+
+#include "./SDFInclude/texture_threedee_sdf.hlsl"
+#include "./SDFInclude/sdf_gradient.hlsl"
+#include "./SDFInclude/hedronizer_variables.hlsl"
+
+/// STRUCTS
+struct Sphere {
+    float4 position;
+    float3  direction;
+    float radius;
+};
+
+struct CollisionData{
+    float4 position;
+    float3 normal;
+    float distance;
+};
+
+static const uint MAX_ITER = 50;
+static const float precision = 0.01;
+/// BUFFERS
+
+StructuredBuffer<Sphere> _Spheres;
+RWStructuredBuffer<CollisionData> _Collisions;
+
+/// FUNCTIONS
+
+
+float4 cast(float3 position, float3 direction, float radius){
+
+    float3 p = position;
+    float3 d = normalize(direction);
+    float m = 1.0;
+    for(uint i = MAX_ITER; i > 0; i--){
+        float f = (sample_sdf(p));
+        if(f > 0.0){
+            p += d * f;
+        }
+    }
+
+    return float4(p, length(p - position));
+
+}
+
+CollisionData CollideSphere(Sphere s){
+
+    float4 hit = cast(s.position.xyz, s.direction, s.radius);
+    float4 data = sample_sdf_gradient(hit.xyz, s.radius);
+    CollisionData collision = {hit, data.xyz, hit.w};
+    return collision;
+}
+
+
+
+/// KERNELS
+
+[numthreads(8,1,1)]
+void collisionize (uint3 id : SV_DispatchThreadID)
+{
+    _Collisions[id.x] = CollideSphere(_Spheres[id.x]);
+}
