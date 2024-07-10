@@ -222,7 +222,7 @@ VertexValues getVertexValues(uint3 cube){
     float v[8];
     [unroll(8)]
     for(int i = 0; i< 8; i++){
-        vertices[i] = ((cube_corners[i] + float3(cube)) * _CellSize.xyz) + _Origin.xyz;
+        vertices[i] = ((cube_corners[i] + float3(cube)) * _CellSize.xyz) + _Position.xyz;
         v[i] = sample_sdf(vertices[i]);
     }
     VertexValues values = {vertices, v};
@@ -246,15 +246,15 @@ float3 interpEdge(uint edge_vertex_1, uint edge_vertex_2, VertexValues values)
 bool createFacet(float3 v1, float3 v2, float3 v3, inout Facet facet)
 {
     Vertex vertices[3];
-    vertices[0].position = float4(v1,1.0);   //interpolates cube index vertices
+    vertices[0].position = float4(v1 - _Position.xyz,1.0);   //interpolates cube index vertices
     vertices[0].normal = float4(0.0, 0.0, 0.0, 0.0);
     //vertices[0].color = color;
 
-    vertices[1].position = float4(v2,1.0);   //interpolates cube index vertices
+    vertices[1].position = float4(v2 - _Position.xyz,1.0);   //interpolates cube index vertices
     vertices[1].normal = float4(0.0, 0.0, 0.0, 0.0);
     //vertices[1].color = color;
 
-    vertices[2].position = float4(v3,1.0);   //interpolates cube index vertices
+    vertices[2].position = float4(v3 - _Position.xyz,1.0);   //interpolates cube index vertices
     vertices[2].normal = float4(0.0, 0.0, 0.0, 0.0);
     //vertices[2].color = color;
 
@@ -274,9 +274,9 @@ bool createFacet(float3 v1, float3 v2, float3 v3, inout Facet facet)
 bool createShallowFacet(float3 v1, float3 v2, float3 v3, inout ShallowFacet facet)
 {
     ShallowVertex vertices[3];
-    vertices[0].position = float4(v1,1.0);   //interpolates cube index vertices
-    vertices[1].position = float4(v2,1.0);   //interpolates cube index vertices
-    vertices[2].position = float4(v3,1.0);   //interpolates cube index vertices
+    vertices[0].position = float4(v1 - _Position.xyz,1.0);   //interpolates cube index vertices
+    vertices[1].position = float4(v2 - _Position.xyz,1.0);   //interpolates cube index vertices
+    vertices[2].position = float4(v3 - _Position.xyz,1.0);   //interpolates cube index vertices
     facet.vertices = vertices;
     return true;
 }

@@ -8,8 +8,8 @@ using UnityEngine.Rendering;
 //Generates a vertexBuffer with a triangulated SDF at some isosurface level
 public class Hedronizer : MonoBehaviour
 {
-    public Texture3DBuilder volumeBuilder;
-
+    //public Texture3DBuilder volumeBuilder;
+    public VolumeManager volumeManager;
     public GraphicsBuffer computeBuffer;
     //public GraphicsBuffer vertexBuffer;
     GraphicsBuffer argsBuffer;
@@ -24,7 +24,7 @@ public class Hedronizer : MonoBehaviour
     public float4 size;
     public float3 sample_region;
 
-    [Range(-100,100)]
+    [Range(-1000,1000)]
     public float isovalue = 0.3f;
 
     [Range(0,1)]
@@ -32,11 +32,12 @@ public class Hedronizer : MonoBehaviour
 
     public int bufferSize;
     public int max_triangles;
+    public int min_triangles;
     public bool ready = false;
     private int quantity_of_vec4s = 2;
     public bool IsChild = true;
 
-    private bool cached_buffer_count = false;
+    public  bool cached_buffer_count = false;
     private int  buffer_count = 0;
     public int ItensInBuffer {
         get{  
@@ -58,6 +59,7 @@ public class Hedronizer : MonoBehaviour
     void Start()
     {   
         if(!IsChild){
+            volumeManager.Initialize(new int3(256,256,256), size.xyz);
             Initialize();
         }
     }
@@ -72,7 +74,7 @@ public class Hedronizer : MonoBehaviour
             gradientH = parent_hedronizer.gradientH;
             //origin = parent_hedronizer.origin;
             size = parent_hedronizer.size;
-            volumeBuilder = parent_hedronizer.volumeBuilder;
+            volumeManager = parent_hedronizer.volumeManager;
             quantity_of_vec4s = 1;
             
         }
@@ -100,14 +102,14 @@ public class Hedronizer : MonoBehaviour
     }
 
     public void FillShaderSDFParameters(ComputeShader target_shader){
-        target_shader.SetVector("_Origin", transform.position);
+        target_shader.SetVector("_Position", transform.position);
         //target_shader.SetVector("_SampleRegion", sample_region.xyzz);
         target_shader.SetVector("_CellSize", cell_size);
         //target_shader.SetVector("_Cells", (sample_region / size.xyz * cells_per_axis).xyzz);
         target_shader.SetFloat("_Time", Time.time);
         target_shader.SetFloat("_Isovalue", isovalue);
         target_shader.SetFloat("_GradientH", gradientH);
-        target_shader.SetVector("_Size", size);
+        target_shader.SetVector("_Scale", size);
     }
 
     public void RunCollision()
@@ -118,7 +120,7 @@ public class Hedronizer : MonoBehaviour
         cell_size = sample_region.xyzz / (float4)cells_per_axis;
         int kernel_id = shader.FindKernel("collisionizer");
         shader.SetBuffer(kernel_id, "collider_buffer", computeBuffer);
-        shader.SetTexture(kernel_id, "_SDF", volumeBuilder.volume);
+        shader.SetTexture(kernel_id, "_SDF", volumeManager.volume);
         FillShaderSDFParameters(shader);
 
 
@@ -130,13 +132,14 @@ public class Hedronizer : MonoBehaviour
     public void RunVisualization()
     {        
         // 'clears' the buffer
+        cached_buffer_count = false;
         computeBuffer.SetCounterValue(0);
 
         cell_size = size / (float4)cells_per_axis;
         //Debug.Log(cell_size);
         int kernel_id = shader.FindKernel("hedronize");
         shader.SetBuffer(kernel_id, "vertex_buffer", computeBuffer);
-        shader.SetTexture(kernel_id, "_SDF", volumeBuilder.volume);
+        shader.SetTexture(kernel_id, "_SDF", volumeManager.volume);
         FillShaderSDFParameters(shader);
 
 
@@ -151,11 +154,7 @@ public class Hedronizer : MonoBehaviour
         computeBuffer?.Dispose();
     }
 
-    public void SetupTexture(){
-        if(volumeBuilder.volume.IsCreated())
-            ready = true;
-    }
-
+ 
     int ComputeStrideSize(){
         //each stride holds 1 triangle.
         return sizeof(float) * 3 * 4 * quantity_of_vec4s;
@@ -171,12 +170,12 @@ public class Hedronizer : MonoBehaviour
 
     public int EstimateComputeBufferSize(int max_tris){        
 
-        float estimated_occupation = 3.5f;
+        float estimated_occupation = 5.5f;
         int computed_buffer_size = ComputerBufferSize();
         int estimate = (int)(estimated_occupation * computed_buffer_size);
         estimate += (3 * quantity_of_vec4s) - (estimate % quantity_of_vec4s);
         if(max_tris != 0)
-            return math.min(max_tris, estimate);
+            return math.max(min_triangles, math.min(max_tris, estimate));
         else
             return estimate;
     }
@@ -187,11 +186,10 @@ public class Hedronizer : MonoBehaviour
     // so each set of hedronizers can share a single configuration set of vars
     public void CopyParameters(Hedronizer target){
         shader = target.shader;
-        //origin = target.origin;
         size = target.size;
         isovalue = target.isovalue;
         gradientH = target.gradientH;
-        volumeBuilder = target.volumeBuilder;
+        volumeManager = target.volumeManager;
     }
 
 }

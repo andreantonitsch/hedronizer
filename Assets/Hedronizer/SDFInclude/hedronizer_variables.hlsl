@@ -3,9 +3,8 @@
 
 /// PARAMETERS
 uniform float4 _CellSize;
-uniform float4 _Origin;
-uniform float4 _Size;
-//uniform float4 _Cells;
+uniform float4 _Position;
+uniform float4 _Scale;
 uniform float _Time;
 uniform float _GradientH;
 uniform float _Isovalue;

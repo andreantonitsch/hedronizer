@@ -18,7 +18,7 @@ public class HedronChunkCollider : MonoBehaviour
     public Hedronizer parent_hedronizer;
     public Hedronizer hedronizer;
     Mesh[] meshes;
-    Texture3DBuilder volumeBuilder;
+    VolumeManager volumeManager;
     BoxCollider eventCollider;
     MeshCollider collider;
     MeshFilter filter;
@@ -31,11 +31,11 @@ public class HedronChunkCollider : MonoBehaviour
 
     public float3 Size;
 
-    public void Initialize(float3 origin, float3 sizes, int cell_per_axis){
+    public void Initialize(float3 position, float3 scale, int cell_per_axis){
         transform = GetComponent<Transform>();
         collider = GetComponent<MeshCollider>();
         filter = GetComponent<MeshFilter>();
-        volumeBuilder = FindFirstObjectByType<Texture3DBuilder>();
+        volumeManager = FindFirstObjectByType<VolumeManager>();
         hedronizer  = GetComponent<Hedronizer>();
         parent_hedronizer  = transform.parent.gameObject.GetComponentInParent<Hedronizer>();
         hedronizer.IsChild = true;
@@ -46,9 +46,9 @@ public class HedronChunkCollider : MonoBehaviour
         meshes = new Mesh[2];
         //breaking triangles into vertices sooner
         triangles = new Tri[hedronizer.EstimateComputeBufferSize(0)];
-        transform.position = origin;
-        Size = sizes;
-        hedronizer.sample_region = sizes;
+        transform.position = position;
+        Size = scale;
+        hedronizer.sample_region = scale;
         meshes[0] = new Mesh();
         meshes[1] = new Mesh();
 
@@ -88,14 +88,12 @@ public class HedronChunkCollider : MonoBehaviour
         meshes[index].Clear() ;
         meshes[index].SetVertices(listVertices);
         meshes[index].SetTriangles(listIndexes,0);
-        filter.mesh = meshes[index];
-        //meshes[index].UploadMeshData(false);
 
-        //Physics.BakeMesh(meshes[index].GetInstanceID(), false, MeshColliderCookingOptions.WeldColocatedVertices);
-        // MeshColliderCookingOptions.CookForFasterSimulation 
-        //                                                       | 
-        //                                                       | MeshColliderCookingOptions.EnableMeshCleaning
-        //                                                       | MeshColliderCookingOptions.UseFastMidphase);
+        Physics.BakeMesh(meshes[index].GetInstanceID(), false, //MeshColliderCookingOptions.WeldColocatedVertices
+                                                             //| MeshColliderCookingOptions.CookForFasterSimulation                                                               
+                                                              MeshColliderCookingOptions.EnableMeshCleaning);
+                                                             //| MeshColliderCookingOptions.UseFastMidphase);
+        //filter.mesh = meshes[index];
     }
 
     //does it async
@@ -113,15 +111,16 @@ public class HedronChunkCollider : MonoBehaviour
 
     void OnDrawGizmos(){    
         Gizmos.color = Color.white;
-        float3 flat = new float3(Size.x, 0.0f, Size.z);
-        float3 pos = new float3(transform.position.x, 0.0f, transform.position.z);
+        float3 flat = new float3(Size.x , 0.0f, Size.z );
+        float3 pos = new float3(transform.position.x + Size.x / 2, 0.0f, transform.position.z + Size.x /2);
         Gizmos.DrawWireCube(pos, flat);
     }
 
     void OnDrawGizmosSelected(){
         
         Gizmos.color = Color.red;
-        Gizmos.DrawWireCube(transform.position, Size);
+        var offset = new float3(transform.position.x + Size.x/ 2, Size.y / 2, transform.position.z + Size.z/2);
+        Gizmos.DrawWireCube(offset , Size);
     }
 
     void BuildMesh  (){

@@ -32,24 +32,24 @@ public class HedronChunkCollisionManager : MonoBehaviour
     // }
 
     public void Initialize(){
-        float3 ori = hedronizer.transform.position;
-        float3 sizes = hedronizer.size.xyz;
-        Chunkify(new Bounds(ori, sizes), ChunksPerAxis);
+        float3 origin = hedronizer.transform.position;
+        float3 scales = hedronizer.size.xyz;
+        Chunkify(origin, scales, ChunksPerAxis);
     }
 
-    public void Chunkify(Bounds bounds, int3 divisions)
+    public void Chunkify(float3 origin, float3 scale, int3 divisions)
     {
-        float3 chunksize = bounds.size / (float3)divisions;
+        float3 chunksize = scale / (float3)divisions;
         float3 halfchunksize = chunksize /  2.0f;
 
+        for(int j = 0; j < divisions.z; j++){
         for(int i = 0; i < divisions.x; i++){
-            for(int j = 0; j < divisions.z; j++){
-                float3 origin = chunksize * new int3(i,0, j) - halfchunksize;
+                float3 position = chunksize * new int3(i,0, j);
                 GameObject chunk = Instantiate(ChunkPrefab);
                 chunk.transform.parent = transform;
                 HedronChunkCollider chunkCollider = chunk.GetComponent<HedronChunkCollider>();
                 Chunks.Add(chunkCollider);
-                chunkCollider.Initialize(origin, chunksize, chunk_cells_per_axis);
+                chunkCollider.Initialize(position, chunksize, chunk_cells_per_axis);
             }
         }
 

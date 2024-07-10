@@ -2,42 +2,39 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
-
-public class Texture3DBuilder : MonoBehaviour
+using Unity.Mathematics;
+public class Texture3DBuilder
 {
 
     public RenderTexture volume;
     public Material material;
-    public int pass = 0;
+    int pass = 0;
 
     //use powers of 2
-    public Vector3Int resolution;
-
-    public RenderTextureFormat format = RenderTextureFormat.RFloat;
+    int3 _resolution;
 
     public string fileName;
-
-    public void Start()
-    {
-        Initialize();
-        GenerateProcedural();
-    }
     
+    public Texture3DBuilder(Material material) { this.material = material; }
+
     // Update is called once per frame
-    public void GenerateProcedural()
+    public RenderTexture GenerateProcedural(Material material)
     {
-        Blit3D(volume, resolution.z, material);
+        Blit3D(volume, _resolution.z, material);
+        
+        return volume; 
     }
 
-    public void Initialize()
+    public void InitializeTexture(int3 resolution, RenderTextureFormat format)
     {
         //RenderTextureDescriptor desc = new RenderTextureDescriptor(resolution.x, resolution.y, format, 0, 0, RenderTextureReadWrite.Linear);
         //desc.volumeDepth = resolution.z;
         //desc.enableRandomWrite =true;
         //volume = new RenderTexture(desc);
 
-        volume = new RenderTexture(resolution.x, resolution.y, 0, format, RenderTextureReadWrite.Linear);
-        volume.volumeDepth = resolution.z;
+        _resolution = resolution;
+        volume = new RenderTexture(_resolution.x, _resolution.y, 0, format, RenderTextureReadWrite.Linear);
+        volume.volumeDepth = _resolution.z;
         volume.enableRandomWrite = true;
         volume.dimension = TextureDimension.Tex3D;
 
@@ -53,12 +50,6 @@ public class Texture3DBuilder : MonoBehaviour
     public void Bake()
     {
 
-    }
-
-
-    void OnDestroy()
-    {
-        volume?.Release();
     }
 
 

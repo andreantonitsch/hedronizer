@@ -1,9 +1,8 @@
 #ifndef HLSL_SDF_GRADIENT
 #define HLSL_SDF_GRADIENT
 
-
-#include "./SDFInclude/hedronizer_variables.hlsl"
-#include "./SDFInclude/texture_threedee_sdf.hlsl"
+#include "Assets/Hedronizer/SDFInclude/hedronizer_variables.hlsl"
+#include "Assets/Hedronizer/SDFInclude/texture_threedee_sdf.hlsl"
 
 float3 sample_sdf_gradient(float3 position){
 

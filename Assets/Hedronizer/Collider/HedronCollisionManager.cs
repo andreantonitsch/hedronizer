@@ -21,7 +21,7 @@ public struct CollisionRequest{
 public class HedronCollisionManager : MonoBehaviour
 {
 
-    public Texture3DBuilder volumeBuilder;
+    public VolumeManager volumeManager;
     public Hedronizer hedronizer;
     GraphicsBuffer collisionBuffer;
     GraphicsBuffer collisionRequestBuffer;
@@ -44,7 +44,7 @@ public class HedronCollisionManager : MonoBehaviour
                                             GraphicsBuffer.UsageFlags.None,
                                             maximumCollisions ,  sizeof(float) * 8);
 
-        volumeBuilder = FindFirstObjectByType<Texture3DBuilder>();
+        volumeManager = FindFirstObjectByType<VolumeManager>();
     }
 
     // Update is called once per frame
@@ -65,7 +65,7 @@ public class HedronCollisionManager : MonoBehaviour
         int kernel_id = shader.FindKernel("collisionize");
         shader.SetBuffer(kernel_id, "_Spheres", collisionRequestBuffer);
         shader.SetBuffer(kernel_id, "_Collisions", collisionBuffer);
-        shader.SetTexture(kernel_id, "_SDF", volumeBuilder.volume);
+        shader.SetTexture(kernel_id, "_SDF", volumeManager.volume);
         hedronizer.FillShaderSDFParameters(shader);
         shader.Dispatch(kernel_id, (requests.Count / 8) + 1, 1, 1);
 

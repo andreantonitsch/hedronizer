@@ -1,0 +1,121 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel add_spheres
+#pragma kernel add_cubes
+#pragma kernel add_noise_spheres
+#pragma kernel add_noise_cubes
+#pragma kernel add_line
+#pragma kernel add_noise_line
+
+#define IDENTITY_MATRIX float4x4(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0)
+
+/// STRUCTS
+// Generic Shape struct. Invoke the right kernel do the thing
+
+// float4 rotation;
+// float3 position;
+// float3 scale;
+// float value1;
+// float value2;
+struct Shape {
+    float4 rotation; //quaternion
+    float3 position;
+    float3 scale; //xyz and magnitude
+    float value1;
+    float value2;
+};
+
+
+/// DATA
+StructuredBuffer<Shape> _Shapes;
+RWTexture3D<float> _VolumeTexture; //structured buffer view of texture.
+
+uniform int _ShapeCount;
+uniform int _StartIndex;
+uniform int3 _Resolution;
+uniform float3 _Scale;
+
+/// FUNCTIONS
+
+// Inigo Quillez functions
+float opSmoothUnion( float d1, float d2, float k )
+{
+    float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return lerp( d2, d1, h ) - k*h*(1.0-h);
+}
+
+float opSmoothSubtraction( float d1, float d2, float k )
+{
+    float h = clamp( 0.5 - 0.5*(d2+d1)/k, 0.0, 1.0 );
+    return lerp( d2, -d1, h ) + k*h*(1.0-h);
+}
+
+float opSmoothIntersection( float d1, float d2, float k )
+{
+    float h = clamp( 0.5 - 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return lerp( d2, d1, h ) + k*h*(1.0-h);
+}
+// end Inigo Quillez functions
+
+
+float4x4 RotMatFromQuaternion(float4 quat){
+
+    return IDENTITY_MATRIX;
+}
+
+float Sphere(float3 p, float3 position, float radius)
+{
+    return length(p - position) - radius;
+}
+
+
+/// KERNELS
+[numthreads(8,8,8)]
+void add_spheres (uint3 id : SV_DispatchThreadID)
+{
+    float3 uvw = (float3(id) / float3(_Resolution));
+    // converts image x,y coordinates into normalized - uvw coordinates and then into world space coordinates
+    float3 p =  uvw * _Scale; 
+
+    float d = 10000000.0;
+    for(uint i = _StartIndex; i < _StartIndex + _ShapeCount; i++){
+        Shape shp = _Shapes[i];
+        
+        float3 pos = mul(RotMatFromQuaternion(shp.rotation), float4(shp.position, 1.0)) * shp.scale ;
+
+        d = min(d, Sphere(p, shp.position, shp.value1));
+    }
+    
+    float tex_d = _VolumeTexture[id];
+    _VolumeTexture[id] = min(tex_d, d / (_Scale.x ));// * _Scale.z * _Scale.y ) ) ;
+}
+
+
+[numthreads(8,8,8)]
+void add_cubes (uint3 id : SV_DispatchThreadID)
+{        
+
+}
+
+[numthreads(8,8,8)]
+void add_noise_spheres (uint3 id : SV_DispatchThreadID)
+{
+
+}
+
+[numthreads(8,8,8)]
+void add_noise_cubes (uint3 id : SV_DispatchThreadID)
+{
+
+}
+
+[numthreads(8,8,8)]
+void add_line (uint3 id : SV_DispatchThreadID)
+{
+
+}
+
+[numthreads(8,8,8)]
+void add_noise_line (uint3 id : SV_DispatchThreadID)
+{
+
+}

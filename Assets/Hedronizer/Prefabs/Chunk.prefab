@@ -16,7 +16,7 @@ GameObject:
   - component: {fileID: 3488224318752812408}
   m_Layer: 0
   m_Name: Chunk
-  m_TagString: Untagged
+  m_TagString: SDF
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -99,19 +99,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7acefbdf087bf8d42ab0440315b5bb67, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  volumeBuilder: {fileID: 0}
+  volumeManager: {fileID: 0}
   shader: {fileID: 7200000, guid: 9cb4eb30f442f844f8a5ddd4a24a592e, type: 3}
   cells_per_axis: 8
-  origin:
-    x: 0
-    y: 0
-    z: 0
-    w: 0
   size:
     x: 0
     y: 0
     z: 0
     w: 0
+  sample_region:
+    x: 0
+    y: 0
+    z: 0
   isovalue: 0.3
   gradientH: 0.001
   bufferSize: 0
@@ -130,7 +129,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 454ebb394fcc4284b8ce262e846c1469, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maximumBufferSize: 0
+  parent_hedronizer: {fileID: 0}
+  hedronizer: {fileID: 0}
   Size:
     x: 0
     y: 0
