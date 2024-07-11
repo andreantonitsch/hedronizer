@@ -9,6 +9,12 @@ RequireComponent(typeof(Hedronizer))]
 public class HedronChunkCollider : MonoBehaviour
 {
 
+    private struct LockedMesh{
+        public bool dirty;
+        public bool baking;
+        public Mesh mesh;
+    }
+
     private struct Tri{
         public float4 v1;
         public float4 v2;
@@ -17,7 +23,7 @@ public class HedronChunkCollider : MonoBehaviour
 
     public Hedronizer parent_hedronizer;
     public Hedronizer hedronizer;
-    Mesh[] meshes;
+    LockedMesh[] meshes;
     VolumeManager volumeManager;
     BoxCollider eventCollider;
     MeshCollider collider;
@@ -25,11 +31,23 @@ public class HedronChunkCollider : MonoBehaviour
     bool dirty = true;
     Transform transform;
     int currentMesh = 0;
+    int BackMesh {
+        get {return (currentMesh + 1) % 2;}
+    }
+
     Tri[] triangles;
     List<Vector3> listVertices;
     List<int> listIndexes; 
 
     public float3 Size;
+
+
+    public void SetDirty(){
+        dirty = true;
+    }
+
+
+
 
     public void Initialize(float3 position, float3 scale, int cell_per_axis){
         transform = GetComponent<Transform>();
@@ -43,21 +61,21 @@ public class HedronChunkCollider : MonoBehaviour
         hedronizer.CopyParameters(parent_hedronizer);
         hedronizer.Initialize();
         
-        meshes = new Mesh[2];
+        meshes = new LockedMesh[2];
         //breaking triangles into vertices sooner
         triangles = new Tri[hedronizer.EstimateComputeBufferSize(0)];
         transform.position = position;
         Size = scale;
         hedronizer.sample_region = scale;
-        meshes[0] = new Mesh();
-        meshes[1] = new Mesh();
+        meshes[0] = new LockedMesh(){mesh = new Mesh(), baking = false, dirty = false};
+        meshes[1] = new LockedMesh(){mesh = new Mesh(), baking = false, dirty = false};
 
         listIndexes = new List<int>();
         listVertices = new List<Vector3>();
 
-        Bake(0);
-        filter.mesh = meshes[0];
-        collider.sharedMesh = meshes[0];
+        ImmediateBake(currentMesh);
+        filter.mesh = meshes[currentMesh].mesh;
+        collider.sharedMesh = meshes[currentMesh].mesh;
 
         // Rebake(0);
         // Rebake(1);
@@ -65,7 +83,7 @@ public class HedronChunkCollider : MonoBehaviour
     }
 
     //initializes stuff
-    public void Bake(int index)
+    public void ImmediateBake(int index)
     {
         listIndexes.Clear();
         listVertices.Clear();
@@ -85,28 +103,32 @@ public class HedronChunkCollider : MonoBehaviour
 
         }
 
-        meshes[index].Clear() ;
-        meshes[index].SetVertices(listVertices);
-        meshes[index].SetTriangles(listIndexes,0);
+        meshes[index].mesh.Clear() ;
+        meshes[index].mesh.SetVertices(listVertices);
+        meshes[index].mesh.SetTriangles(listIndexes,0);
 
-        Physics.BakeMesh(meshes[index].GetInstanceID(), false, //MeshColliderCookingOptions.WeldColocatedVertices
-                                                             //| MeshColliderCookingOptions.CookForFasterSimulation                                                               
-                                                              MeshColliderCookingOptions.EnableMeshCleaning);
+        Physics.BakeMesh(meshes[index].mesh.GetInstanceID(), false, MeshColliderCookingOptions.WeldColocatedVertices
+                                                             | MeshColliderCookingOptions.CookForFasterSimulation                                                               
+                                                             | MeshColliderCookingOptions.EnableMeshCleaning);
                                                              //| MeshColliderCookingOptions.UseFastMidphase);
         //filter.mesh = meshes[index];
     }
 
-    //does it async
-    public void Rebake(int index){
+    public void UpdateMesh(){
+        if(dirty){
+            //do the thing
+            ImmediateBake(BackMesh);
 
-        
-
+            MeshSwap();
+            dirty = false;
+        }
     }
 
     public void MeshSwap(){
 
         currentMesh = (currentMesh + 1) % 2; 
-        filter.mesh = meshes[currentMesh];
+        filter.mesh = meshes[currentMesh].mesh;
+        collider.sharedMesh = meshes[currentMesh].mesh;
     }
 
     void OnDrawGizmos(){    
@@ -123,10 +145,8 @@ public class HedronChunkCollider : MonoBehaviour
         Gizmos.DrawWireCube(offset , Size);
     }
 
-    void BuildMesh  (){
-
-
-
+    void Update(){
+        UpdateMesh();
     }
 
 

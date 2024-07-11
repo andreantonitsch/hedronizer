@@ -9,12 +9,14 @@ using UnityEngine.Rendering;
 public class Hedronizer : MonoBehaviour
 {
     //public Texture3DBuilder volumeBuilder;
+    public int3 VolumeResolution = new int3(256,256,256);
     public VolumeManager volumeManager;
     public GraphicsBuffer computeBuffer;
     //public GraphicsBuffer vertexBuffer;
     GraphicsBuffer argsBuffer;
 
     public ComputeShader shader;
+    public ComputeShader argsBufferCorrectshader;
     uint3 visualization_thread_groups = 8;
     uint3 collision_thread_groups = 8;
     public int cells_per_axis;
@@ -37,7 +39,7 @@ public class Hedronizer : MonoBehaviour
     private int quantity_of_vec4s = 2;
     public bool IsChild = true;
 
-    public  bool cached_buffer_count = false;
+    bool cached_buffer_count = false;
     private int  buffer_count = 0;
     public int ItensInBuffer {
         get{  
@@ -45,7 +47,7 @@ public class Hedronizer : MonoBehaviour
                 int[] args = new int[]{ 0, 1, 0, 0 };
                 argsBuffer.SetData(args);
                 GraphicsBuffer.CopyCount(computeBuffer, argsBuffer, 0);
-
+                // TODO inneficient
                 argsBuffer.GetData(args);
                 buffer_count = args[0];
                 cached_buffer_count = true;
@@ -55,11 +57,27 @@ public class Hedronizer : MonoBehaviour
         }
     }
 
+    bool cached_args_buffer = false;
+    public GraphicsBuffer ArgsBuffer {
+        get{  
+            if(!cached_args_buffer){
+
+                GraphicsBuffer.CopyCount(computeBuffer, argsBuffer, 0);
+                // corrects the instance count
+                argsBufferCorrectshader.SetBuffer(0, "_ArgsBuffer", argsBuffer);
+                argsBufferCorrectshader.Dispatch(0, 1,1,1);
+                cached_args_buffer = true;
+            }
+
+            return argsBuffer;
+        }
+    }
+
     // Start is called before the first frame update
     void Start()
     {   
         if(!IsChild){
-            volumeManager.Initialize(new int3(256,256,256), size.xyz);
+            volumeManager.Initialize(VolumeResolution, size.xyz);
             Initialize();
         }
     }
@@ -79,7 +97,10 @@ public class Hedronizer : MonoBehaviour
             
         }
 
-        argsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments | GraphicsBuffer.Target.CopyDestination,  GraphicsBuffer.UsageFlags.None,  4, sizeof(int));
+        argsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments | 
+                                        GraphicsBuffer.Target.CopyDestination |
+                                        GraphicsBuffer.Target.Structured,  
+                                        GraphicsBuffer.UsageFlags.None,  1, 4 * sizeof(int));
 
        
         // each facet is 3 x vertices of 2 x float4 each
@@ -87,7 +108,7 @@ public class Hedronizer : MonoBehaviour
 
         computeBuffer  = new GraphicsBuffer(GraphicsBuffer.Target.Structured 
                                             | GraphicsBuffer.Target.Append
-                                            //| GraphicsBuffer.Target.CopySource
+                                            | GraphicsBuffer.Target.CopySource
                                             ,GraphicsBuffer.UsageFlags.None,
                                             bufferSize ,  ComputeStrideSize());
 
@@ -115,6 +136,7 @@ public class Hedronizer : MonoBehaviour
     public void RunCollision()
     {        
         cached_buffer_count = false;
+        cached_args_buffer = false;
         // 'clears' the buffer
         computeBuffer.SetCounterValue(0);
         cell_size = sample_region.xyzz / (float4)cells_per_axis;
@@ -133,6 +155,7 @@ public class Hedronizer : MonoBehaviour
     {        
         // 'clears' the buffer
         cached_buffer_count = false;
+        cached_args_buffer = false;
         computeBuffer.SetCounterValue(0);
 
         cell_size = size / (float4)cells_per_axis;

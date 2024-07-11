@@ -1,5 +1,6 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel add_spheres
+#pragma kernel remove_spheres
 #pragma kernel add_cubes
 #pragma kernel add_noise_spheres
 #pragma kernel add_noise_cubes
@@ -82,11 +83,32 @@ void add_spheres (uint3 id : SV_DispatchThreadID)
         
         float3 pos = mul(RotMatFromQuaternion(shp.rotation), float4(shp.position, 1.0)) * shp.scale ;
 
-        d = min(d, Sphere(p, shp.position, shp.value1));
+        d = opSmoothUnion(d, Sphere(p, shp.position, shp.value1), 0.1);
     }
     
     float tex_d = _VolumeTexture[id];
-    _VolumeTexture[id] = min(tex_d, d / (_Scale.x ));// * _Scale.z * _Scale.y ) ) ;
+    //_VolumeTexture[id] = min(tex_d, d / (_Scale.x ));// * _Scale.z * _Scale.y ) ) ;
+    _VolumeTexture[id] = opSmoothUnion(tex_d, d / (_Scale.x ), 0.1);// * _Scale.z * _Scale.y ) ) ;
+}
+
+[numthreads(8,8,8)]
+void remove_spheres (uint3 id : SV_DispatchThreadID)
+{
+    float3 uvw = (float3(id) / float3(_Resolution));
+    // converts image x,y coordinates into normalized - uvw coordinates and then into world space coordinates
+    float3 p =  uvw * _Scale; 
+
+    float d = 10000000.0;
+    for(uint i = _StartIndex; i < _StartIndex + _ShapeCount; i++){
+        Shape shp = _Shapes[i];
+        
+        float3 pos = mul(RotMatFromQuaternion(shp.rotation), float4(shp.position, 1.0)) * shp.scale ;
+
+        d = opSmoothUnion(d, Sphere(p, shp.position, shp.value1), 0.1);
+    }
+    
+    float tex_d = _VolumeTexture[id];
+    _VolumeTexture[id] = opSmoothSubtraction(d / (_Scale.x ), tex_d, 0.1);// * _Scale.z * _Scale.y ) ) ;
 }
 
 

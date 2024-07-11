@@ -14,14 +14,14 @@ public class Test_Shooter : MonoBehaviour
 
     public float Force = 100;
     public float offset = 5;
-
+    public bool held = false;
     void Awake(){
         actions.FindActionMap("actionmap").FindAction("ShootLeft").performed += (InputAction.CallbackContext context) => {ShootObject(0);};
+        //actions.FindActionMap("actionmap").FindAction("ShootLeft").performed += (InputAction.CallbackContext context) => {held = context.ReadValueAsButton();};
         actions.FindActionMap("actionmap").FindAction("ShootRight").performed += (InputAction.CallbackContext context) => {ShootObject(1);};
     }
 
     public void ShootObject(int index){
-
         float3 pos = camera.transform.position;
 
         Ray dir = camera.ScreenPointToRay(Input.mousePosition);
@@ -40,6 +40,11 @@ public class Test_Shooter : MonoBehaviour
     void OnDisable()
     {
         actions.FindActionMap("actionmap").Disable();
+    }
+
+
+    void Update(){
+        //if(held)ShootObject(0);
     }
 
 

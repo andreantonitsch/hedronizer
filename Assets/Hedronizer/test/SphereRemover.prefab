@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 4608003614791455037}
   - component: {fileID: 3696933606557505449}
   m_Layer: 0
-  m_Name: Sphere
+  m_Name: SphereRemover
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -66,7 +66,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 24f1dcd2e0f02b843bee9ca6d4698949, type: 2}
+  - {fileID: 2100000, guid: 84f1e2449833af449b5f359270bcb453, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -148,3 +148,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dc66ba00e784174408a2deeeecacc25f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  radius: 3
+  shape: 1

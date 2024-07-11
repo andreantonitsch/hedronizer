@@ -13,6 +13,7 @@ public class HedronizerRenderer : MonoBehaviour
 
     void Start(){
         hedronizer = GetComponent<Hedronizer>();
+        //GraphicsSettings.useScriptableRenderPipelineBatching = false;
     }
 
     void Update(){
@@ -32,6 +33,10 @@ public class HedronizerRenderer : MonoBehaviour
         rp.matProps.SetBuffer("_Data", hedronizer.computeBuffer);
         rp.matProps.SetMatrix("_ObjectToWorld", transform.localToWorldMatrix);
         Graphics.RenderPrimitives(rp, MeshTopology.Triangles, hedronizer.ItensInBuffer * 3, 1);
+        //Graphics.RenderPrimitivesIndirect(rp, MeshTopology.Triangles, hedronizer.ArgsBuffer, 1);
+
+
+
     }
 
 

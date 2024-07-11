@@ -14,11 +14,12 @@ Shader "Custom/DataShader"
 
         CGPROGRAM
 // Upgrade NOTE: excluded shader from DX11; has structs without semantics (struct appdata members normal,vertex)
-#pragma exclude_renderers d3d11
+//#pragma exclude_renderers d3d11
 
         // Physically based Standard lighting model, and enable shadows on all light types
         #pragma surface surf Standard fullforwardshadows vertex:vert
-
+        #pragma multi_compile_instancing
+        #pragma instancing_options procedural:setup
         // Use shader model 3.0 target, to get nicer looking lighting
         #pragma target 5.0
 
@@ -46,8 +47,8 @@ Shader "Custom/DataShader"
         fixed4 _Color;
         uniform float4x4 _ObjectToWorld;
 
-        //#if !defined(SHADER_TARGET_SURFACE_ANALYSIS)
-        #ifdef SHADER_API_D3D11		
+        #if !defined(SHADER_TARGET_SURFACE_ANALYSIS)
+        //#ifdef SHADER_API_D3D11		
         // has position, normals and color for each vertex
         // indexed with  vertex id * 3 + 0, vertex id * 3 + 1, vertex id * 3 + 2
         StructuredBuffer<Facet> _Data;
@@ -65,6 +66,15 @@ Shader "Custom/DataShader"
             uint id : SV_VertexID;
         };
 
+        
+        void setup()
+        {
+        #ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
+            unity_ObjectToWorld = _ObjectToWorld;
+            // unity_WorldToObject = unity_ObjectToWorld;
+        #endif
+        }
+
         // Add instancing support for this shader. You need to check 'Enable Instancing' on materials that use the shader.
         // See https://docs.unity3d.com/Manual/GPUInstancing.html for more information about instancing.
         // #pragma instancing_options assumeuniformscaling
@@ -75,10 +85,10 @@ Shader "Custom/DataShader"
         void vert (inout appdata v, out Input d) {
             UNITY_INITIALIZE_OUTPUT(Input, d);
             
-            //#if !defined(SHADER_TARGET_SURFACE_ANALYSIS)
-            #ifdef SHADER_API_D3D11
+            #if !defined(SHADER_TARGET_SURFACE_ANALYSIS)
+            //#ifdef SHADER_API_D3D11
                 Facet facet = _Data[v.id / 3];
-                Vertex vertex = facet[v.id % 3];
+                Vertex vertex = facet.vertices[v.id %3];
                 v.vertex.xyzw = vertex.position;
                 v.normal.xyz =  vertex.normal;
                 d.color.xyzw = fixed4(vertex.color);    

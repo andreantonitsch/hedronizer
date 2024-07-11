@@ -1,0 +1,22 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel vertex_count_correction
+#define UNITY_INDIRECT_DRAW_ARGS IndirectDrawArgs
+#include "UnityIndirect.cginc"
+
+
+struct Args{
+    uint vertexCount;
+    uint instanceCount;
+    uint startVertex;
+    uint startInstance;
+};
+
+RWStructuredBuffer<Args> _ArgsBuffer;
+
+[numthreads(1,1,1)]
+void vertex_count_correction (uint id : SV_DispatchThreadID)
+{
+    // TODO: insert actual code here!
+
+    _ArgsBuffer[id].vertexCount = _ArgsBuffer[id].vertexCount * 3;
+}

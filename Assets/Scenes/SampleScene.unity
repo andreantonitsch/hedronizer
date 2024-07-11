@@ -355,9 +355,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7acefbdf087bf8d42ab0440315b5bb67, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  VolumeResolution:
+    x: 256
+    y: 256
+    z: 256
   volumeManager: {fileID: 209950555}
   shader: {fileID: 7200000, guid: 9cb4eb30f442f844f8a5ddd4a24a592e, type: 3}
-  cells_per_axis: 32
+  argsBufferCorrectshader: {fileID: 7200000, guid: a99824cfc20470442a8cc59185f52ad8,
+    type: 3}
+  cells_per_axis: 16
   size:
     x: 64
     y: 64
@@ -374,7 +380,6 @@ MonoBehaviour:
   min_triangles: 250000
   ready: 0
   IsChild: 0
-  cached_buffer_count: 0
 --- !u!4 &209950551
 Transform:
   m_ObjectHideFlags: 0
@@ -403,8 +408,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   hedronizer: {fileID: 0}
-  material: {fileID: -876546973899608171, guid: 6ca8da1fa5d6d9140887c589e88bd2d4,
-    type: 3}
+  material: {fileID: 2100000, guid: f97a40d594c6aa346be2c80e86325c48, type: 2}
 --- !u!114 &209950554
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -424,7 +428,7 @@ MonoBehaviour:
     x: 4
     y: 1
     z: 4
-  chunk_cells_per_axis: 8
+  chunk_cells_per_axis: 4
 --- !u!114 &209950555
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -446,7 +450,7 @@ MonoBehaviour:
     x: 0
     y: 0
     z: 0
-  TextureStartMaterial: {fileID: -876546973899608171, guid: 9ea98019d5e566a44abbc9e4d23a43cb,
+  TextureStartMaterial: {fileID: -876546973899608171, guid: 1a86b8c00c074d54d87718788791ff18,
     type: 3}
   MaximumShapes: 128
   ShapeWriter: {fileID: 7200000, guid: 8f13f7ff6d58e604abe05f4c966066f9, type: 3}

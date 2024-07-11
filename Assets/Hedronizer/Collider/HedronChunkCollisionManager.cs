@@ -49,6 +49,7 @@ public class HedronChunkCollisionManager : MonoBehaviour
                 chunk.transform.parent = transform;
                 HedronChunkCollider chunkCollider = chunk.GetComponent<HedronChunkCollider>();
                 Chunks.Add(chunkCollider);
+                float3 cell_size = new float3(chunksize.x / chunk_cells_per_axis, 0, chunksize.z / chunk_cells_per_axis);
                 chunkCollider.Initialize(position, chunksize, chunk_cells_per_axis);
             }
         }

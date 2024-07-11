@@ -28,7 +28,8 @@ public class VolumeManager : MonoBehaviour
     public Material TextureStartMaterial;
     public int MaximumShapes = 128;
     
-    List<Shape> spheres = new List<Shape>();
+    List<Shape> addSpheres = new List<Shape>();
+    List<Shape> removeSpheres = new List<Shape>();
     List<Shape> shapes = new List<Shape>();
 
     public ComputeShader ShapeWriter; 
@@ -53,7 +54,22 @@ public class VolumeManager : MonoBehaviour
     public void AddSphere(float3 position, float3 scale, float radius){
         
         Debug.Log("Test");
-        spheres.Add(new Shape{
+        addSpheres.Add(new Shape{
+            position = position,
+            rotation = new float4(Quaternion.identity.x,Quaternion.identity.y ,Quaternion.identity.z ,Quaternion.identity.w) ,
+            scale =  scale,
+            value1 = radius,
+            value2 = 0.0f
+        });
+
+        dirty = true;
+
+    }
+
+    public void RemoveSphere(float3 position, float3 scale, float radius){
+        
+
+        removeSpheres.Add(new Shape{
             position = position,
             rotation = new float4(Quaternion.identity.x,Quaternion.identity.y ,Quaternion.identity.z ,Quaternion.identity.w) ,
             scale =  scale,
@@ -70,19 +86,37 @@ public class VolumeManager : MonoBehaviour
         SetShaderParameters(resolution, scale);
 
         int sphereStart = shapes.Count;
-        int SphereCount = spheres.Count;
-        shapes.AddRange(spheres);	
+        int sphereCount = addSpheres.Count;
+        shapes.AddRange(addSpheres);	
 
+        
+
+
+        int remSphereStart = shapes.Count;
+        int remSphereCount  = removeSpheres.Count;
+        shapes.AddRange(removeSpheres);
+        
         shapeBuffer.SetData<Shape>(shapes);
 
-        SetBufferLocation(sphereStart, SphereCount);
-        int kernel_id = ShapeWriter.FindKernel("add_spheres");
-        ShapeWriter.SetBuffer(kernel_id, "_Shapes", shapeBuffer);
-        ShapeWriter.SetTexture(kernel_id, "_VolumeTexture", volume);
+        if(sphereCount > 0){
+            int kernel_id = ShapeWriter.FindKernel("add_spheres");
+            ShapeWriter.SetBuffer(kernel_id, "_Shapes", shapeBuffer);
+            ShapeWriter.SetTexture(kernel_id, "_VolumeTexture", volume);
 
-        ShapeWriter.Dispatch(kernel_id, resolution.x / 8, resolution.y / 8, resolution.z /8);
+            SetBufferLocation(sphereStart, sphereCount);
+            ShapeWriter.Dispatch(kernel_id, resolution.x / 8, resolution.y / 8, resolution.z /8);
 
-        spheres.Clear();
+        }
+
+        if(remSphereCount > 0){
+            int kernel_id = ShapeWriter.FindKernel("remove_spheres");
+            ShapeWriter.SetBuffer(kernel_id, "_Shapes", shapeBuffer);
+            ShapeWriter.SetTexture(kernel_id, "_VolumeTexture", volume);
+            SetBufferLocation(remSphereStart, remSphereCount);
+            ShapeWriter.Dispatch(kernel_id, resolution.x / 8, resolution.y / 8, resolution.z /8);
+        }
+        addSpheres.Clear();
+        removeSpheres.Clear();
         shapes.Clear();
         dirty = false;
     }

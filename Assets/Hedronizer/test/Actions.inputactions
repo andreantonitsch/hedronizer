@@ -7,12 +7,12 @@
             "actions": [
                 {
                     "name": "ShootLeft",
-                    "type": "Button",
+                    "type": "Value",
                     "id": "33360280-9447-4be4-906d-ad8756f49992",
                     "expectedControlType": "Button",
                     "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false
+                    "interactions": "Press(behavior=2)",
+                    "initialStateCheck": true
                 },
                 {
                     "name": "ShootRight",
