@@ -128,6 +128,13 @@ public class HedronChunkCollider : MonoBehaviour
         (AsyncGPUReadbackRequest request) => {
             Task task = Task.Factory.StartNew(delegate {
                 
+                meshes[index].mesh.Clear() ;
+                meshes[index].mesh.SetVertices(listVertices);
+                meshes[index].mesh.SetTriangles(listIndexes,0);
+
+                Physics.BakeMesh(meshes[index].mesh.GetInstanceID(), false, MeshColliderCookingOptions.WeldColocatedVertices
+                                                                    | MeshColliderCookingOptions.CookForFasterSimulation                                                               
+                                                                    | MeshColliderCookingOptions.EnableMeshCleaning);
             }).ContinueWith( delegate { meshes[index].baking = false; MeshSwap();});
 
         }
@@ -135,14 +142,14 @@ public class HedronChunkCollider : MonoBehaviour
     }
 
     public void UpdateMesh(){
-        // if(dirty && !meshes[BackMesh].baking){
-        //     //do the thing
-        //     BakeAsync(BackMesh);
-        // }
-        if(dirty){
+        if(dirty && !meshes[BackMesh].baking){
             //do the thing
-            ImmediateBake(BackMesh);
+            BakeAsync(BackMesh);
         }
+        // if(dirty){
+        //     //do the thing
+        //     ImmediateBake(BackMesh);
+        // }
     }
 
     public void MeshSwap(){
