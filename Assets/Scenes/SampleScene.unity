@@ -847,11 +847,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   objects:
   - {fileID: 7159126805954213767, guid: 024882e1a893f4843a8fd3d2b156bbe8, type: 3}
-  - {fileID: 6339283577416048296, guid: 72e71abe883b919498ed7bb99df8bcc9, type: 3}
+  - {fileID: 7159126805954213767, guid: 53f82e8758aff444eb973fe8b525dd78, type: 3}
   camera: {fileID: 330585545}
   actions: {fileID: -944628639613478452, guid: 6fc30aeff86e08e4ebe6d062f4be7f15, type: 3}
   Force: 1500
   offset: 30
+  held: 0
 --- !u!4 &555047749
 Transform:
   m_ObjectHideFlags: 0
