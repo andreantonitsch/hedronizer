@@ -1,8 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Unity.Mathematics;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 [RequireComponent(typeof(MeshCollider), typeof(MeshFilter), typeof(BoxCollider)),
 RequireComponent(typeof(Hedronizer))]
@@ -89,6 +91,7 @@ public class HedronChunkCollider : MonoBehaviour
         listVertices.Clear();
 
         hedronizer.RunCollision();
+        //TODO very slow
         hedronizer.computeBuffer.GetData(triangles);
 
         for (int i = 0; i < hedronizer.ItensInBuffer; i++)
@@ -114,13 +117,31 @@ public class HedronChunkCollider : MonoBehaviour
         //filter.mesh = meshes[index];
     }
 
+    public void BakeAsync(int index){
+        listIndexes.Clear();
+        listVertices.Clear();
+
+        meshes[index].baking = true;
+        hedronizer.RunCollision();
+
+        AsyncGPUReadback.Request(hedronizer.computeBuffer, hedronizer.ItensInBuffer * hedronizer.ComputeStrideSize(), 0, 
+        (AsyncGPUReadbackRequest request) => {
+            Task task = Task.Factory.StartNew(delegate {
+                
+            }).ContinueWith( delegate { meshes[index].baking = false; MeshSwap();});
+
+        }
+        );
+    }
+
     public void UpdateMesh(){
+        // if(dirty && !meshes[BackMesh].baking){
+        //     //do the thing
+        //     BakeAsync(BackMesh);
+        // }
         if(dirty){
             //do the thing
             ImmediateBake(BackMesh);
-
-            MeshSwap();
-            dirty = false;
         }
     }
 
@@ -129,6 +150,7 @@ public class HedronChunkCollider : MonoBehaviour
         currentMesh = (currentMesh + 1) % 2; 
         filter.mesh = meshes[currentMesh].mesh;
         collider.sharedMesh = meshes[currentMesh].mesh;
+        dirty = false;
     }
 
     void OnDrawGizmos(){    

@@ -178,7 +178,7 @@ public class Hedronizer : MonoBehaviour
     }
 
  
-    int ComputeStrideSize(){
+    public int ComputeStrideSize(){
         //each stride holds 1 triangle.
         return sizeof(float) * 3 * 4 * quantity_of_vec4s;
     }
